@@ -34,12 +34,6 @@
         "description": "Provide the name of the resource group to store the Function App."
       }
     },
-    "SubcriptionID": {
-      "type": "string",
-      "metadata": {
-        "description": "Provide the Subscription ID for the Azure Subscription that contains the above resource group."
-      }
-    },
     "Tags": {
       "type": "object",
       "defaultValue": {},
