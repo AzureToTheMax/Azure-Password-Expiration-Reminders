@@ -1,0 +1,166 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.11.1.770",
+      "templateHash": "9761768728791091167"
+    }
+  },
+  "parameters": {
+    "FunctionAppName": {
+      "type": "string",
+      "metadata": {
+        "description": "Provide a name for the Function App that consists of alphanumerics. Name must be globally unique in Azure and cannot start or end with a hyphen."
+      }
+    },
+    "FunctionAppServicePlanSKU": {
+      "type": "string",
+      "defaultValue": "Y1",
+      "metadata": {
+        "description": "Select the desired App Service Plan of the Function App. Select Y1 for free consumption based deployment."
+      },
+      "allowedValues": [
+        "Y1",
+        "EP1",
+        "EP2",
+        "EP3"
+      ]
+    },
+    "ResourceGroup": {
+      "type": "string",
+      "metadata": {
+        "description": "Provide the name of the resource group to store the Function App."
+      }
+    },
+    "SubcriptionID": {
+      "type": "string",
+      "metadata": {
+        "description": "Provide the Subscription ID for the Azure Subscription that contains the above resource group."
+      }
+    },
+    "Tags": {
+      "type": "object",
+      "defaultValue": {},
+      "metadata": {
+        "description": "Provide any tags required by your organization (optional)"
+      }
+    }
+  },
+  "variables": {
+    "UniqueString": "[uniqueString(resourceGroup().id)]",
+    "FunctionAppNameNoDash": "[replace(parameters('FunctionAppName'), '-', '')]",
+    "FunctionAppNameNoDashUnderScore": "[replace(variables('FunctionAppNameNoDash'), '_', '')]",
+    "StorageAccountName": "[toLower(format('{0}{1}sa', take(variables('FunctionAppNameNoDashUnderScore'), 17), take(variables('UniqueString'), 5)))]",
+    "FunctionAppServicePlanName": "[format('{0}-fa-plan', parameters('FunctionAppName'))]",
+    "FunctionAppInsightsName": "[format('{0}-fa-ai', parameters('FunctionAppName'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2021-02-01",
+      "name": "[variables('StorageAccountName')]",
+      "location": "[resourceGroup().location]",
+      "kind": "StorageV2",
+      "sku": {
+        "name": "Standard_LRS"
+      },
+      "properties": {
+        "supportsHttpsTrafficOnly": true,
+        "accessTier": "Hot",
+        "allowBlobPublicAccess": false,
+        "minimumTlsVersion": "TLS1_2",
+        "allowSharedKeyAccess": true
+      },
+      "tags": "[parameters('Tags')]"
+    },
+    {
+      "type": "Microsoft.Web/serverfarms",
+      "apiVersion": "2021-01-15",
+      "name": "[variables('FunctionAppServicePlanName')]",
+      "location": "[resourceGroup().location]",
+      "kind": "Windows",
+      "properties": {},
+      "sku": {
+        "name": "[parameters('FunctionAppServicePlanSKU')]"
+      },
+      "tags": "[parameters('Tags')]"
+    },
+    {
+      "type": "Microsoft.Insights/components",
+      "apiVersion": "2020-02-02",
+      "name": "[variables('FunctionAppInsightsName')]",
+      "location": "[resourceGroup().location]",
+      "kind": "web",
+      "properties": {
+        "Application_Type": "web"
+      },
+      "tags": "[union(parameters('Tags'), createObject(format('hidden-link:{0}', resourceId('Microsoft.Web/sites', variables('FunctionAppInsightsName'))), 'Resource'))]"
+    },
+    {
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2020-12-01",
+      "name": "[parameters('FunctionAppName')]",
+      "location": "[resourceGroup().location]",
+      "kind": "functionapp",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('FunctionAppServicePlanName'))]",
+        "containerSize": 1536,
+        "httpsOnly": true,
+        "siteConfig": {
+          "ftpsState": "Disabled",
+          "minTlsVersion": "1.2",
+          "powerShellVersion": "~7.2",
+          "scmType": "None",
+          "use32BitWorkerProcess": false,
+          "appSettings": [
+            {
+              "name": "AzureWebJobsStorage",
+              "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1}', variables('StorageAccountName'), listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('StorageAccountName')), '2021-02-01').keys[0].value)]"
+            },
+            {
+              "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
+              "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1}', variables('StorageAccountName'), listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('StorageAccountName')), '2021-02-01').keys[0].value)]"
+            },
+            {
+              "name": "WEBSITE_CONTENTSHARE",
+              "value": "[toLower('LogAnalyticsAPI')]"
+            },
+            {
+              "name": "FUNCTIONS_EXTENSION_VERSION",
+              "value": "~4"
+            },
+            {
+              "name": "APPINSIGHTS_INSTRUMENTATIONKEY",
+              "value": "[reference(resourceId('Microsoft.Insights/components', variables('FunctionAppInsightsName')), '2020-02-02').InstrumentationKey]"
+            },
+            {
+              "name": "APPLICATIONINSIGHTS_CONNECTION_STRING",
+              "value": "[reference(resourceId('Microsoft.Insights/components', variables('FunctionAppInsightsName')), '2020-02-02').ConnectionString]"
+            },
+            {
+              "name": "FUNCTIONS_WORKER_RUNTIME",
+              "value": "powershell"
+            }
+          ]
+        }
+      },
+      "tags": "[parameters('Tags')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', variables('FunctionAppServicePlanName'))]",
+        "[resourceId('Microsoft.Insights/components', variables('FunctionAppInsightsName'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('StorageAccountName'))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "functionAppTriggerUrl": {
+      "type": "string",
+      "value": "[format('https://{0}/api/LogCollectorAPI', reference(resourceId('Microsoft.Web/sites', parameters('FunctionAppName'))).defaultHostName)]"
+    }
+  }
+}
