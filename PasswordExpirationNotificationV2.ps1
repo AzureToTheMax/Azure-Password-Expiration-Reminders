@@ -3,6 +3,9 @@
         #Contact:     @AzuretotheMax
         #Website:     AzureToTheMax.net
         #Created:     01-30-2023
+	#Credit: This script is based on the client-side script by Jan Ketil Skanke (@JankeSkanke) of the MSEndpointMgr team. It is also based on Viktor's original script in the smthwentright blog. See my blog below covering this project for further details.
+ 	#Blog: https://azuretothemax.net/2023/02/10/windows-toast-notification-based-password-expiration-reminders/
+
 
 #changeable Values
 $FunctionURL = "https:/XXXXXXX.azurewebsites.net/api/XXXXXX?" #Your Function App URL and Function trigger name itself.
