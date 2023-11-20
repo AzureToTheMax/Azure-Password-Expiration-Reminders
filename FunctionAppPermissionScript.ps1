@@ -1,6 +1,8 @@
 # Install the module. (You need admin on the machine.) Run this once.
 # Install-Module Microsoft.Graph
 
+#Credit: This script is from the MSEndpointMgr team.
+
 #Tenant ID
 $TenantID="XXXXXX"
 #Function App Name
