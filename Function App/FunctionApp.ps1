@@ -4,6 +4,7 @@
         #Contact:     @AzuretotheMax
         #Website:     AzureToTheMax.net
         #Created:     01-30-2023
+        #Credit:      This function app is based on the work of Jan Ketil Skanke (@JankeSkanke) of the MSEndpointMgrwith specific regards to his Intune Enhanced Inventory project.
 
 
 using namespace System.Net
